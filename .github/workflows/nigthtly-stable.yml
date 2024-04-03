@@ -9,11 +9,14 @@ name: Stable Build and Test Nightly
 jobs:
   update_build_and_test:
     runs-on: ubuntu-latest
+    strategy:
+    matrix:
+      version: ["stable", "nightly"]
     steps:
       - name: Checkout tiledb-rs
         uses: actions/checkout@v4
-      - name: Install Rust Stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust ${{ matrix.version }}
+        uses: dtolnay/rust-toolchain@${{ matrix.version }}
       - name: Install TileDB
         uses: ./.github/actions/install-tiledb
       - name: Check Formatting
