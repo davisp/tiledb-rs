@@ -260,11 +260,11 @@ impl Processor {
                 mismatch = true;
                 println!("<table>");
                 println!(
-                    "<tr><th>Generated</th><td>`{}`</td></tr>",
+                    "<tr><th>Generated</th><td><pre>{}</pre></td></tr>",
                     util::unparse_constant(&constant)
                 );
                 println!(
-                    "<tr><th>Declared</th><td><pre>`{}`</td></tr>",
+                    "<tr><th>Declared</th><td><pre>{}</pre></td></tr>",
                     util::unparse_constant(sys_def.unwrap())
                 );
                 println!("</table>");
@@ -331,6 +331,7 @@ impl Processor {
                     "<tr><th>Declared</th><td><pre>```{}```</pre></td></tr>",
                     util::unparse_signature(sys_def.unwrap())
                 );
+                println!("</table>");
             }
 
             if wrapped {
