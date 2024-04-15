@@ -236,6 +236,7 @@ impl Processor {
         );
 
         println!("</table>");
+        println!();
 
         if !unwrapped_constants.is_empty() {
             println!("## Unwrapped Constants");
