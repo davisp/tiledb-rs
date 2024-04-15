@@ -196,26 +196,36 @@ impl Processor {
         let (mismatch_apis, called_apis, declared_apis, generated_apis) =
             self.report_calls();
 
+        println!("<table>");
+        println!("  <tr>");
+        println!("    <th></th>");
+        println!("    <th>Count</th>");
+        println!("    <th>Total</th>");
+        println!("    <th>Percent</th>");
+        println!("  </tr>");
+
         println!(
-            "Constants:     {} of {} ({:.2}%)",
+            "<tr><td>Constants</td><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
             declared_constants,
             generated_constants,
             declared_constants as f64 / generated_constants as f64 * 100.0f64
         );
 
         println!(
-            "Declared APIs: {} of {} ({:.2}%)",
+            "<tr><td>Declared APIs</td><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
             declared_apis,
             generated_apis,
             declared_apis as f64 / generated_apis as f64 * 100.0f64
         );
 
         println!(
-            "Called APIs:   {} of {} ({:.2}%)",
+            "<tr><td>Called APIs</td><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
             called_apis,
             generated_apis,
             called_apis as f64 / generated_apis as f64 * 100.0f64
         );
+
+        println!("</table>");
 
         mismatch_constants || mismatch_apis
     }
@@ -244,14 +254,19 @@ impl Processor {
                 declared += 1;
             } else {
                 if !mismatch {
-                    println!("Mismatched Constants:");
+                    println!("## Mismatched Constants");
+                    println!();
                 }
                 mismatch = true;
-                println!("  Generated: {}", util::unparse_constant(&constant));
                 println!(
-                    "  sys crate: {}",
+                    "* Generated: `{}`",
+                    util::unparse_constant(&constant)
+                );
+                println!(
+                    "* Declared: `{}`",
                     util::unparse_constant(sys_def.unwrap())
                 );
+                println!()
             }
         }
 
@@ -260,9 +275,10 @@ impl Processor {
         }
 
         if !unwrapped.is_empty() {
-            println!("Unwrapped Constants:");
+            println!("## Unwrapped Constants");
+            println!();
             for name in &unwrapped[..] {
-                println!("  {}", name);
+                println!(" * `{}`", name);
             }
             println!();
         }
@@ -298,18 +314,20 @@ impl Processor {
                 declared += 1;
             } else {
                 if !mismatch {
-                    println!("Mismatched Function Signatures:")
-                } else {
+                    println!("## Mismatched Function Signatures");
                     println!();
                 }
                 mismatch = true;
-                println!("{}:", name);
+                println!("### {}", name);
                 println!();
-                println!("  Generated:");
-                println!("    {}", util::unparse_signature(&sig));
-                println!();
-                println!("  sys crate:");
-                println!("    {}", util::unparse_signature(sys_def.unwrap()));
+                println!(
+                    "* Generated: ```{}```",
+                    util::unparse_signature(&sig)
+                );
+                println!(
+                    "* Declared: ```{}```",
+                    util::unparse_signature(sys_def.unwrap())
+                );
             }
 
             if wrapped {
@@ -327,17 +345,17 @@ impl Processor {
         }
 
         if !unwrapped.is_empty() {
-            println!("Unwrapped APIs:");
+            println!("## Unwrapped APIs:");
             for name in &unwrapped[..] {
-                println!("  {}", name);
+                println!("  * `{}`", name);
             }
             println!();
         }
 
         if !uncalled.is_empty() {
-            println!("Uncalled APIs:");
+            println!("## Uncalled APIs:");
             for name in &uncalled[..] {
-                println!("  {}", name);
+                println!("  * `{}`", name);
             }
             println!();
         }
