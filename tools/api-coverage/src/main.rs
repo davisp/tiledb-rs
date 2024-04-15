@@ -205,21 +205,21 @@ impl Processor {
         println!("  </tr>");
 
         println!(
-            "<tr><td>Constants</td><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
+            "<tr><th>Constants</th><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
             declared_constants,
             generated_constants,
             declared_constants as f64 / generated_constants as f64 * 100.0f64
         );
 
         println!(
-            "<tr><td>Declared APIs</td><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
+            "<tr><th>Declared APIs</th><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
             declared_apis,
             generated_apis,
             declared_apis as f64 / generated_apis as f64 * 100.0f64
         );
 
         println!(
-            "<tr><td>Called APIs</td><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
+            "<tr><th>Called APIs</th><td>{}</td><td>{}</td><td>{:.2}%</td></tr>",
             called_apis,
             generated_apis,
             called_apis as f64 / generated_apis as f64 * 100.0f64
@@ -258,14 +258,16 @@ impl Processor {
                     println!();
                 }
                 mismatch = true;
+                println!("<table>");
                 println!(
-                    "* Generated: `{}`",
+                    "<tr><th>Generated</th><td>`{}`</td></tr>",
                     util::unparse_constant(&constant)
                 );
                 println!(
-                    "* Declared: `{}`",
+                    "<tr><th>Declared</th><td><pre>`{}`</td></tr>",
                     util::unparse_constant(sys_def.unwrap())
                 );
+                println!("</table>");
                 println!()
             }
         }
@@ -320,12 +322,13 @@ impl Processor {
                 mismatch = true;
                 println!("### {}", name);
                 println!();
+                println!("<table>");
                 println!(
-                    "* Generated: ```{}```",
+                    "<tr><th>Generated</th><td><pre>```{}```</pre></td></tr>",
                     util::unparse_signature(&sig)
                 );
                 println!(
-                    "* Declared: ```{}```",
+                    "<tr><th>Declared</th><td><pre>```{}```</pre></td></tr>",
                     util::unparse_signature(sys_def.unwrap())
                 );
             }
