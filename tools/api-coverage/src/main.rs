@@ -323,12 +323,10 @@ impl Processor {
                 println!("### {}", name);
                 println!();
                 println!("<table>");
+                println!("<tr><th>Generated</th><th>Declared</th></tr>");
                 println!(
-                    "<tr><th>Generated</th><td><pre>```{}```</pre></td></tr>",
-                    util::unparse_signature(&sig)
-                );
-                println!(
-                    "<tr><th>Declared</th><td><pre>```{}```</pre></td></tr>",
+                    "<tr><td><pre>{}</pre></td><td><pre>{}</pre></td></tr>",
+                    util::unparse_signature(&sig),
                     util::unparse_signature(sys_def.unwrap())
                 );
                 println!("</table>");
