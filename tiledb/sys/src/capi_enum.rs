@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-pub const tiledb_array_type_t_TILEDB_DENSE: tiledb_array_type_t = 100;
+pub const tiledb_array_type_t_TILEDB_DENSE: tiledb_array_type_t = 0;
 pub const tiledb_array_type_t_TILEDB_SPARSE: tiledb_array_type_t = 1;
 pub type tiledb_array_type_t = ::std::os::raw::c_uint;
 

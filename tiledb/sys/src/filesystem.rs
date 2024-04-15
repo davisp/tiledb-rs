@@ -9,6 +9,6 @@ extern "C" {
 
     pub fn tiledb_filesystem_from_str(
         str_: *const ::std::os::raw::c_char,
-        filesystem: *mut u32,
+        filesystem: *mut tiledb_filesystem_t,
     ) -> capi_return_t;
 }
