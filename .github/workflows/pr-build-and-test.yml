@@ -23,3 +23,6 @@ jobs:
           cargo test --all-targets --all-features
           status=$?
           echo "Process exited with status ${status}"
+      # Temporary to test that this will fail.
+      - name: Assert Static Linkage
+        run: .github/scripts/ubuntu-check-static-linkage.sh
