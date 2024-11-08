@@ -1,4 +1,3 @@
-mod command;
 mod compile;
 mod current_os;
 mod error;

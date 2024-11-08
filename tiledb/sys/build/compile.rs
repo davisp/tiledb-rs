@@ -13,8 +13,8 @@ pub fn libtiledb() -> Result<String> {
         }
     }
 
-    // N.B., you might think this should be `build_dir()`, but the cmake crate
-    // appends `build` unconditionally so we have to go one directory up.
+    // N.B., you might think this should be `utils::build_dir()`, but the cmake
+    // crate appends `build` unconditionally so we have to go one directory up.
     let out_dir = utils::out_dir();
     let git_dir = utils::git_dir();
     let mut builder = cmake::Config::new(&git_dir);

@@ -1,6 +1,8 @@
 #![cfg(target_os = "linux")]
 
-use crate::error::Result;
+use std::process::{Command, Stdio};
+
+use crate::error::{Error, Result};
 
 pub fn configure_rustc(_out: &std::path::Path) -> Result<()> {
     println!("cargo::rustc-link-lib=dylib=stdc++");
@@ -12,7 +14,7 @@ pub fn merge_libraries(build_dir: &std::path::Path) -> Result<()> {
     let mut tdb = std::path::PathBuf::from(build_dir);
     tdb.extend(["tiledb", "libtiledb.a"]);
     if !tdb.is_file() {
-        panic!("Missing libtiled: {}", tdb.display());
+        panic!("Missing static library: {}", tdb.display());
     }
 
     let mut vcpkg_installed = std::path::PathBuf::from(build_dir);
@@ -88,7 +90,22 @@ pub fn merge_libraries(build_dir: &std::path::Path) -> Result<()> {
     lines.push("end".to_string());
     let lines = lines.join("\n");
 
-    let cmd = vec!["ar", "-M"];
+    let output = Command::new("ar")
+        .arg("-M")
+        .stdin(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .spawn()
+        .map_err(|e| Error::IO("Error executing ar".to_string(), e))?;
 
-    crate::command::run(&cmd, Some(&lines))
+    let stdin = child.stdin.as_mut().unwrap();
+    stdin.write_all(lines)?;
+
+    // Manually drop stdin to create a compile time assertion before
+    // we call child.wait() to avoid deadlock.
+    drop(stdin);
+
+    let status = child
+        .wait()
+        .map_err(|e| Error::IO("Ar merge failed".to_string(), e))?;
 }
