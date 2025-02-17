@@ -1,0 +1,188 @@
+name: Package TileDB
+
+on:
+  schedule:
+    # runs every day at 04:17 UTC
+    - cron: "17 04 * * *"
+  workflow_dispatch:
+
+jobs:
+  generate-matrix:
+    name: Generate Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.generate.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Generate
+        id: generate
+        run: |
+          MATRIX=$(.github/scripts/generate-build-matrix.py)
+          echo "matrix=${MATRIX}" >> $GITHUB_OUTPUT
+
+  build:
+    needs:
+      - generate-matrix
+    name: Build - ${{ matrix.platform }} - ${{ matrix.version }} - ${{ matrix.linkage }}
+    strategy:
+      fail-fast: false
+      matrix:
+        matrix: ${{ fromJson(needs.setup.outputs.mymatrix) }}
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.manylinux || '' }}
+    env:
+      MACOSX_DEPLOYMENT_TARGET: ${{ matrix.MACOSX_DEPLOYMENT_TARGET }}
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+    steps:
+      - name: Checkout TileDB
+        # v4 uses node 20 which is incompatible with the libc version of the manylinux image
+        uses: actions/checkout@v3
+        with:
+          repository: "TileDB-Inc/TileDB"
+          ref: ${{ matrix.version }}
+      - name: Export GitHub Actions cache variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      - name: Setup Homebrew
+        run: brew install automake ninja
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+      - name: Setup manylinux
+        if: ${{ startsWith(matrix.platform, 'linux') == true }}
+        run: |
+          set -e pipefail
+          yum install -y ninja-build perl-IPC-Cmd curl zip unzip tar
+          echo "VCPKG_FORCE_SYSTEM_BINARIES=YES" >> $GITHUB_ENV
+        shell: bash
+      - name: Set Version Variable
+        id: set-version
+        run: |
+          hash=$( git rev-parse --short HEAD )
+          version=${{ matrix.version }}
+          if [ "x${{ matrix.build_shared_libs }}" == "xOFF"]; then
+            suffix="-static"
+          else
+            suffix=""
+          fi
+          echo "release_version=${version}-${hash}${suffix}" >> $GITHUB_OUTPUT
+        shell: bash
+      - name: Configure TileDB
+        run: echo "Hello, World!"
+        shell: bash
+      # - name: Configure TileDB
+      #   run: |
+      #     cmake -S . -B build \
+      #       -DCMAKE_BUILD_TYPE=Release \
+      #       -DBUILD_SHARED_LIBS=ON \
+      #       -DCMAKE_INSTALL_PREFIX=./dist \
+      #       -DTILEDB_INSTALL_LIBDIR=lib \
+      #       -DTILEDB_S3=ON \
+      #       -DTILEDB_AZURE=ON \
+      #       -DTILEDB_GCS=ON \
+      #       -DTILEDB_HDFS=${{ startsWith(matrix.platform, 'windows') && 'OFF' || 'ON' }} \
+      #       -DTILEDB_SERIALIZATION=ON \
+      #       -DTILEDB_WEBP=ON \
+      #       -DTILEDB_TESTS=OFF \
+      #       -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
+      #       ${{ matrix.cmake_args }}
+      #   shell: bash
+      - name: Build TileDB
+        env:
+          TILEDB_PACKAGE_VERSION: ${{ steps.set-version.outputs.release_version }}
+        run: |
+          mkdir build
+          touch build/tiledb-${{ matrix.platform }}-${{ env.TILEDB_PACKAGE_VERSION }}.tar.gz*
+        shell: bash
+        # run: cmake --build build -j4 --config Release --target package
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            build/tiledb-*.tar.gz*
+            build/tiledb-*.zip*
+
+  publish:
+    needs:
+      - build
+    name: Publish Release Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-*
+          merge-multiple: true
+          path: dist
+      - name: Publish Artifacts
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const repo = context.repo;
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: repo.owner,
+              repo: repo.repo,
+              tag: "nightlies"
+            });
+            const globber = await glob.create('dist/*');
+            for await (const file of globber.globGenerator()) {
+              await github.rest.repos.uploadReleaseAsset({
+                owner: repo.owner,
+                repo: repo.repo,
+                release_id: release.data.id,
+                headers: {
+                  'content-type': 'application/octet-stream',
+                  'content-length': fs.statSync(file).size
+                },
+                name: path.basename(file),
+                data: fs.readFileSync(file)
+              });
+            }
+
+  generate-releases-csv:
+    needs:
+      - publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create Release Directory
+        run: mkdir release-data
+        shell: bash
+      - name: Github release data
+        uses: KevinRohn/github-full-release-data@v2.0.4
+        with:
+          version: "nightlies"
+          asset-file: "*.zip,*.tar.gz"
+          asset-output: "./release-data/"
+      - name: Generate releases.csv
+        run: |
+          .github/scripts/generate-releases-csv.py
+      - name: Upload releases.*
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file: release-data/releases.*
+          tag: nightlies
+          overwrite: true
+          file_glob: true
+
+  create-issue-on-fail:
+    permissions:
+      issues: write
+    runs-on: ubuntu-latest
+    needs: generate-releases-csv
+    if: failure()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create Issue on Failure
+        uses: TileDB-Inc/github-actions/open-issue@main
+        with:
+          name: Nightly Build Failure
+          label: nightly-failure
+          assignee: davisp,rroelke
